@@ -24,6 +24,13 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	/* Return the Current Energy Level of the Electricity Consumer */
+	UFUNCTION(BlueprintPure, Category = "Electricity")
+	FORCEINLINE float GetCurrentElectricity() const { return CurrentElectricityEnergy; }
+
+	/* Function to change the Current Energy of the Electricity Consumer*/
+	UFUNCTION(BlueprintCallable, Category = "Electricity")
+	void UpdateEnergy(float EnergyChange);
 		
 protected:
 

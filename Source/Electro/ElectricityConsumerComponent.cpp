@@ -11,6 +11,9 @@ UElectricityConsumerComponent::UElectricityConsumerComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	// ...
+	InitialElectricityEnergy = 1000.f;
+	CurrentElectricityEnergy = InitialElectricityEnergy;
+	DecreaseElectricityFactor = 1.f;
 }
 
 
@@ -29,6 +32,13 @@ void UElectricityConsumerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	if (IsActive())
+	{
+		UpdateEnergy(-DecreaseElectricityFactor * DeltaTime);
+	}
 }
 
+void UElectricityConsumerComponent::UpdateEnergy(float EnergyChange)
+{
+	CurrentElectricityEnergy += EnergyChange;
+}
