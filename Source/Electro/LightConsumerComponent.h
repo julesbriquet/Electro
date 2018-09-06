@@ -13,7 +13,12 @@ UCLASS(ClassGroup = (Electricity), meta = (BlueprintSpawnableComponent))
 class ELECTRO_API ULightConsumerComponent : public UElectricityConsumerComponent
 {
 	GENERATED_BODY()
-	
+
+
+public:
+    // Sets default values for this component's properties
+    ULightConsumerComponent();
+
 protected:
 
 	virtual void BeginPlay() override;
@@ -23,6 +28,7 @@ protected:
 
 	
 private:
+	UPROPERTY(VisibleAnywhere, Category = "Electricity")
 	TArray<class ULightComponent*> LightComponentList;
 
 	TArray<int> InitialLightIntensityList;

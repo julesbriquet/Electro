@@ -5,6 +5,12 @@
 #include "GameFramework/Actor.h"
 
 
+ULightConsumerComponent::ULightConsumerComponent()
+    : UElectricityConsumerComponent()
+{
+}
+
+
 // Called when the game starts
 void ULightConsumerComponent::BeginPlay()
 {
