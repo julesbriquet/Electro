@@ -7,8 +7,8 @@
 #include "ElectricityConsumerComponent.generated.h"
 
 
-UENUM ()
-enum EEnergyLevelState
+UENUM (BlueprintType)
+enum class EEnergyLevelState : uint8
 {
     Normal,
     Medium,
@@ -18,6 +18,8 @@ enum EEnergyLevelState
     Invalid,
 };
 
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEnergyStateChanged);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class ELECTRO_API UElectricityConsumerComponent : public UActorComponent
@@ -49,7 +51,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Electricity")
 	void UpdateEnergy(float EnergyChange);
 	
+	UFUNCTION(BlueprintPure, Category = "Electricity")
+	FORCEINLINE EEnergyLevelState GetCurrentEnergyState() const { return CurrentElectricityLevelState; }
+
 protected:
+
+	UPROPERTY(BlueprintAssignable, Category = "Electricity")
+	FEnergyStateChanged EnergyConsumer_OnStateChanged;
+
     UFUNCTION(BlueprintCallable, Category = "Electricity")
     void ChangeState(EEnergyLevelState NewState);
 
