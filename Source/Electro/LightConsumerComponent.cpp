@@ -33,9 +33,14 @@ void ULightConsumerComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
 	if (IsActive())
 	{
-		float EnergyRatio = GetCurrentElectricity() / InitialElectricityEnergy;
-
 		for (int i = 0; i < LightComponentList.Num(); ++i)
-			LightComponentList[i]->SetIntensity(EnergyRatio * InitialLightIntensityList[i]);
+			LightComponentList[i]->SetIntensity(GetLightEnergy(i));
 	}
+}
+
+float ULightConsumerComponent::GetLightEnergy(int lightIndex)
+{
+    float EnergyRatio = GetCurrentElectricityRatio();
+    float LightEnergy = EnergyRatio * InitialLightIntensityList[lightIndex];
+    return LightEnergy;
 }

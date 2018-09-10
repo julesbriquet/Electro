@@ -26,6 +26,8 @@ protected:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+    UFUNCTION(BlueprintCallable, Category = "Electricity")
+    float GetLightEnergy(int lightIndex);
 	
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Electricity")
