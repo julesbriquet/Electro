@@ -70,4 +70,6 @@ void UElectricityConsumerComponent::ChangeState(EEnergyLevelState NewState)
         return;
 
     CurrentElectricityLevelState = NewState;
+
+    EnergyConsumer_OnStateChanged.Broadcast();
 }

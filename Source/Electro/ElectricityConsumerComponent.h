@@ -62,12 +62,10 @@ protected:
     UFUNCTION(BlueprintCallable, Category = "Electricity")
     void ChangeState(EEnergyLevelState NewState);
 
-    virtual void OnStateChanged_Implementation() {}
-
 protected:
 
     UPROPERTY(VisibleAnywhere, Category = "Electricity")
-    TEnumAsByte<EEnergyLevelState> CurrentElectricityLevelState;
+    EEnergyLevelState CurrentElectricityLevelState;
 
 	/* Current Amount of Electricity this Consumer have. */
 	UPROPERTY(VisibleAnywhere, Category = "Electricity")
