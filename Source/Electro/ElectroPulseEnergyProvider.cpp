@@ -2,6 +2,11 @@
 
 #include "ElectroPulseEnergyProvider.h"
 
+#include <Components/SphereComponent.h>
+#include <GameFramework/Actor.h>
+#include <Public/TimerManager.h>
+
+#include "ElectricityConsumerComponent.h"
 
 // Sets default values for this component's properties
 UElectroPulseEnergyProvider::UElectroPulseEnergyProvider()
@@ -11,6 +16,12 @@ UElectroPulseEnergyProvider::UElectroPulseEnergyProvider()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	// ...
+    PulseStartDelay = 5.f;
+    ElectricityEnergy = 100.f;
+    PulseNumber = 1;
+    DelayBetweenPulse = 2.f;
+
+    ElectroPulseSphere = CreateDefaultSubobject<USphereComponent>(TEXT("ElectroPulseSphere"));
 }
 
 
@@ -20,7 +31,14 @@ void UElectroPulseEnergyProvider::BeginPlay()
 	Super::BeginPlay();
 
 	// ...
-	
+    GetOwner()->GetWorldTimerManager().SetTimer(PulseTimer, this, &UElectroPulseEnergyProvider::OnElectricityPulse, DelayBetweenPulse, true, PulseStartDelay);
+}
+
+void UElectroPulseEnergyProvider::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    GetOwner()->GetWorldTimerManager().ClearTimer(PulseTimer);
+
+    Super::EndPlay(EndPlayReason);
 }
 
 
@@ -32,3 +50,24 @@ void UElectroPulseEnergyProvider::TickComponent(float DeltaTime, ELevelTick Tick
 	// ...
 }
 
+void UElectroPulseEnergyProvider::OnElectricityPulse()
+{
+    PulseNumber--;
+    if (PulseNumber <= 0)
+        GetOwner()->GetWorldTimerManager().ClearTimer(PulseTimer);
+
+    TArray<AActor*> OverlappingActorArray;
+    ElectroPulseSphere->GetOverlappingActors(OverlappingActorArray);
+
+    for (AActor* OverlappingActor : OverlappingActorArray)
+    {
+        TArray<UElectricityConsumerComponent*> ElectricityConsumerComponentList;
+        OverlappingActor->GetComponents<UElectricityConsumerComponent>(ElectricityConsumerComponentList);
+
+        for (UElectricityConsumerComponent* ElectricityConsumerComponent : ElectricityConsumerComponentList)
+        {
+            if (ElectricityConsumerComponent->IsActive())
+                ElectricityConsumerComponent->UpdateEnergy(ElectricityEnergy);
+        }
+    }
+}
