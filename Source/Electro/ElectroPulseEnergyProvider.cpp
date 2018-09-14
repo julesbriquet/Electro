@@ -2,7 +2,6 @@
 
 #include "ElectroPulseEnergyProvider.h"
 
-#include <Components/SphereComponent.h>
 #include <GameFramework/Actor.h>
 #include <Public/TimerManager.h>
 
@@ -20,10 +19,7 @@ UElectroPulseEnergyProvider::UElectroPulseEnergyProvider()
     ElectricityEnergy = 100.f;
     PulseNumber = 1;
     DelayBetweenPulse = 2.f;
-
-    ElectroPulseSphere = CreateDefaultSubobject<USphereComponent>(TEXT("ElectroPulseSphere"));
 }
-
 
 // Called when the game starts
 void UElectroPulseEnergyProvider::BeginPlay()
@@ -57,7 +53,7 @@ void UElectroPulseEnergyProvider::OnElectricityPulse()
         GetOwner()->GetWorldTimerManager().ClearTimer(PulseTimer);
 
     TArray<AActor*> OverlappingActorArray;
-    ElectroPulseSphere->GetOverlappingActors(OverlappingActorArray);
+    GetOverlappingActors(OverlappingActorArray);
 
     for (AActor* OverlappingActor : OverlappingActorArray)
     {

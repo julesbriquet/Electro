@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Components/SphereComponent.h"
 #include "ElectroPulseEnergyProvider.generated.h"
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class ELECTRO_API UElectroPulseEnergyProvider : public UActorComponent
+class ELECTRO_API UElectroPulseEnergyProvider : public USphereComponent
 {
 	GENERATED_BODY()
 
@@ -45,9 +45,6 @@ protected:
     float DelayBetweenPulse;
 
 private:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Electricity", meta = (AllowPrivateAccess = "true"))
-    class USphereComponent* ElectroPulseSphere;
 
     FTimerHandle PulseTimer;
-	
 };
