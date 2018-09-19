@@ -8,7 +8,7 @@
 
 
 UENUM (BlueprintType)
-enum class EEnergyLevelState : uint8
+enum class EElectricityLevelState : uint8
 {
     Normal,
     Medium,
@@ -19,7 +19,8 @@ enum class EEnergyLevelState : uint8
 };
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEnergyStateChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FElectricityLevelStateChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FElectricitySwitchChanged, bool, isSwitchedOn);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class ELECTRO_API UElectricityConsumerComponent : public UActorComponent
@@ -31,7 +32,6 @@ public:
 	UElectricityConsumerComponent();
 
 	
-
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -40,7 +40,7 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	/* Return the Current Energy Level of the Electricity Consumer */
+	/* Return the Current Electricity Level of the Electricity Consumer */
 	UFUNCTION(BlueprintPure, Category = "Electricity")
 	FORCEINLINE float GetCurrentElectricity() const { return CurrentElectricityEnergy; }
 
@@ -52,32 +52,50 @@ public:
 	void UpdateEnergy(float EnergyChange);
 	
 	UFUNCTION(BlueprintPure, Category = "Electricity")
-	FORCEINLINE EEnergyLevelState GetCurrentEnergyState() const { return CurrentElectricityLevelState; }
+	FORCEINLINE EElectricityLevelState GetCurrentEnergyState() const { return CurrentElectricityLevelState; }
 
 protected:
 
 	UPROPERTY(BlueprintAssignable, Category = "Electricity")
-	FEnergyStateChanged EnergyConsumer_OnStateChanged;
+	FElectricityLevelStateChanged ElectricityConsumer_OnStateChanged;
 
     UFUNCTION(BlueprintCallable, Category = "Electricity")
-    void ChangeState(EEnergyLevelState NewState);
+    void ChangeState(EElectricityLevelState NewState);
+
+    void ElectricityConsumer_OnSwitchChanged_Implementation(bool isSwitchedOn);
+
+    UPROPERTY(BlueprintAssignable, Category = "Electricity")
+    FElectricitySwitchChanged ElectricityConsumer_OnSwitchChanged;
 
 protected:
 
+    /* Energy Level State of this Electricity Component */
     UPROPERTY(VisibleAnywhere, Category = "Electricity")
-    EEnergyLevelState CurrentElectricityLevelState;
+    EElectricityLevelState CurrentElectricityLevelState;
 
 	/* Current Amount of Electricity this Consumer have. */
 	UPROPERTY(VisibleAnywhere, Category = "Electricity")
 	float CurrentElectricityEnergy;
 	
+    /* The Initial Electricity that the Consumer have */
 	UPROPERTY(EditAnywhere, Category = "Electricity")
 	float InitialElectricityEnergy;
 
-	/* Decrease Rate (in Unit/Seconds) of the Energy of this Electricity Consummer */
+	/* Decrease Rate (in Unit/Seconds) of the Electricity of this Electricity Consummer */
 	UPROPERTY(EditAnywhere, Category = "Electricity")
 	float DecreaseElectricityFactor;
 
+    /* The Electricity Ratio at which the Electricity Level of the Consumer is considered Low */
     UPROPERTY(EditAnywhere, Category = "Electricity")
-    float LowEnergyRatio;
+    float LowElectricityRatio;
+
+    // -------------------------------
+    // DEBUG PART
+    // -------------------------------
+
+protected:
+    virtual void OnTickDebug();
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool enableDebug = false;
 };

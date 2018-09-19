@@ -2,6 +2,7 @@
 
 #include "ElectricityConsumerComponent.h"
 
+#include "Public/DrawDebugHelpers.h"
 
 // Sets default values for this component's properties
 UElectricityConsumerComponent::UElectricityConsumerComponent()
@@ -11,13 +12,13 @@ UElectricityConsumerComponent::UElectricityConsumerComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	// ...
-    CurrentElectricityLevelState = EEnergyLevelState::Normal;
+    CurrentElectricityLevelState = EElectricityLevelState::Normal;
 
 	InitialElectricityEnergy = 1000.f;
 	CurrentElectricityEnergy = InitialElectricityEnergy;
 	DecreaseElectricityFactor = 1.f;
     
-    LowEnergyRatio = 0.2f;
+    LowElectricityRatio = 0.2f;
 }
 
 
@@ -35,6 +36,8 @@ void UElectricityConsumerComponent::BeginPlay()
 void UElectricityConsumerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    OnTickDebug();
+
 
 	if (IsActive())
 	{
@@ -53,23 +56,46 @@ void UElectricityConsumerComponent::UpdateEnergy(float EnergyChange)
     float CurrentElectricityRatio = GetCurrentElectricityRatio();
 
     if (CurrentElectricityRatio > 1.f)
-        ChangeState(EEnergyLevelState::Overflow);
+        ChangeState(EElectricityLevelState::Overflow);
     else if (CurrentElectricityRatio > 0.5f)
-        ChangeState(EEnergyLevelState::Normal);
-    else if (CurrentElectricityRatio > LowEnergyRatio)
-        ChangeState(EEnergyLevelState::Medium);
+        ChangeState(EElectricityLevelState::Normal);
+    else if (CurrentElectricityRatio > LowElectricityRatio)
+        ChangeState(EElectricityLevelState::Medium);
     else if (CurrentElectricityRatio > 0.f)
-        ChangeState(EEnergyLevelState::Low);
+        ChangeState(EElectricityLevelState::Low);
     else if (CurrentElectricityRatio <= 0.f)
-        ChangeState(EEnergyLevelState::Empty);
+        ChangeState(EElectricityLevelState::Empty);
 }
 
-void UElectricityConsumerComponent::ChangeState(EEnergyLevelState NewState)
+void UElectricityConsumerComponent::ChangeState(EElectricityLevelState NewState)
 {
     if (CurrentElectricityLevelState == NewState)
         return;
 
+    if (NewState == EElectricityLevelState::Empty)
+        ElectricityConsumer_OnSwitchChanged_Implementation(false);
+    else if (CurrentElectricityLevelState == EElectricityLevelState::Empty)
+        ElectricityConsumer_OnSwitchChanged_Implementation(true);
+
     CurrentElectricityLevelState = NewState;
 
-    EnergyConsumer_OnStateChanged.Broadcast();
+    ElectricityConsumer_OnStateChanged.Broadcast();
+}
+
+void UElectricityConsumerComponent::ElectricityConsumer_OnSwitchChanged_Implementation(bool isSwitchedOn)
+{
+    ElectricityConsumer_OnSwitchChanged.Broadcast(isSwitchedOn);
+}
+
+
+// -------------------------------
+// DEBUG PART
+// -------------------------------
+
+void UElectricityConsumerComponent::OnTickDebug()
+{
+    if (!enableDebug)
+        return;
+
+    DrawDebugString(GEngine->GetWorldFromContextObject(this), FVector::ZeroVector, *FString::Printf(TEXT("Energy %f"), this->GetCurrentElectricity()), this->GetOwner(), FColor::Red, 0.f);
 }
