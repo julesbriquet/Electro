@@ -9,12 +9,12 @@
 /**
  * 
  */
-UCLASS()
-class ELECTRO_API AElectroGameModeBase : public AGameModeBase
+UCLASS(minimalapi)
+class AElectroGameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
 	
-	
-	
+public:
+    AElectroGameModeBase();	
 	
 };
