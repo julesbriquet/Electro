@@ -57,6 +57,8 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
     PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
     PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
+    PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AThirdPersonCharacter::ChangeStance);
+
     PlayerInputComponent->BindAxis("MoveForward", this, &AThirdPersonCharacter::MoveForward);
     PlayerInputComponent->BindAxis("MoveRight", this, &AThirdPersonCharacter::MoveRight);
 
@@ -93,6 +95,14 @@ void AThirdPersonCharacter::LookUpAtRate(float Rate)
 {
     // calculate delta for this frame from the rate information
     AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+}
+
+void AThirdPersonCharacter::ChangeStance()
+{
+    if (!bIsCrouched)
+        Crouch(false);
+    else
+        UnCrouch(false);
 }
 
 void AThirdPersonCharacter::MoveForward(float Value)
