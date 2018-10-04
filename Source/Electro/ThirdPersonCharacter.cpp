@@ -9,6 +9,8 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 
+#include "GameFramework/ProjectileMovementComponent.h"
+
 //////////////////////////////////////////////////////////////////////////
 // ARawThirdPersonCharacter
 
@@ -59,6 +61,9 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 
     PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AThirdPersonCharacter::ChangeStance);
 
+    PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AThirdPersonCharacter::PickThrowableObject);
+    PlayerInputComponent->BindAction("Throw", IE_Released, this, &AThirdPersonCharacter::ThrowObject);
+
     PlayerInputComponent->BindAxis("MoveForward", this, &AThirdPersonCharacter::MoveForward);
     PlayerInputComponent->BindAxis("MoveRight", this, &AThirdPersonCharacter::MoveRight);
 
@@ -103,6 +108,45 @@ void AThirdPersonCharacter::ChangeStance()
         Crouch(false);
     else
         UnCrouch(false);
+}
+
+void AThirdPersonCharacter::PickThrowableObject()
+{
+    if (EquipedThrowableObject != NULL)
+    {
+        UWorld* const CurrentWorld = GetWorld();
+        if (CurrentWorld != NULL)
+        {
+            FActorSpawnParameters SpawnParams;
+            SpawnParams.Owner = this;
+            SpawnParams.Instigator = Instigator;
+
+            FVector SpawnLocation = this->GetActorLocation() + FVector(100.f, 0.f, 0.f);
+            FRotator SpawnRotation = this->GetActorRotation();
+
+            SpawnedThrowableObject = CurrentWorld->SpawnActor<AActor>(EquipedThrowableObject, SpawnLocation, SpawnRotation, SpawnParams);
+        
+            SpawnedThrowableObject->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+        }
+    }
+}
+
+void AThirdPersonCharacter::ThrowObject()
+{
+    if (SpawnedThrowableObject != nullptr)
+    {
+        TArray<UProjectileMovementComponent*> ProjectileComponentList;
+        SpawnedThrowableObject->GetComponents<UProjectileMovementComponent>(ProjectileComponentList);
+
+        for (UProjectileMovementComponent* ProjectileComponent : ProjectileComponentList)
+        {
+            ProjectileComponent->SetActive(true);
+        }
+
+        SpawnedThrowableObject->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+        SpawnedThrowableObject = nullptr;
+    }
 }
 
 void AThirdPersonCharacter::MoveForward(float Value)
