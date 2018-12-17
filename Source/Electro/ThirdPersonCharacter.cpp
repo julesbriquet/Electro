@@ -9,13 +9,22 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 
+#include <Public/TimerManager.h>
+
+#include <EngineGlobals.h>
+#include <Runtime/Engine/Classes/Engine/Engine.h>
+#include "DrawDebugHelpers.h"
+
 #include "GameFramework/ProjectileMovementComponent.h"
+
 
 //////////////////////////////////////////////////////////////////////////
 // ARawThirdPersonCharacter
 
 AThirdPersonCharacter::AThirdPersonCharacter()
 {
+    SetActorTickEnabled(true);
+
     // Set size for collision capsule
     GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -47,19 +56,29 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 
     // Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
     // are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
+
+
+    // STANCE INIT
+    bIsChangeStanceInputPressed = false;
+    CurrentStance = EPlayerStanceState::Stand;
+    DelayForStanceHold = 0.2f;
 }
 
 //////////////////////////////////////////////////////////////////////////
 // Input
 
+void AThirdPersonCharacter::Tick(float DeltaSeconds)
+{
+    DrawDebug();
+}
+
 void AThirdPersonCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
     // Set up gameplay key bindings
     check(PlayerInputComponent);
-    PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-    PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-    PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AThirdPersonCharacter::ChangeStance);
+    PlayerInputComponent->BindAction("ChangeStance", IE_Pressed, this, &AThirdPersonCharacter::ChangeStanceInputPressed);
+    PlayerInputComponent->BindAction("ChangeStance", IE_Released, this, &AThirdPersonCharacter::ChangeStanceInputReleased);
 
     PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AThirdPersonCharacter::PickThrowableObject);
     PlayerInputComponent->BindAction("Throw", IE_Released, this, &AThirdPersonCharacter::ThrowObject);
@@ -74,20 +93,6 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
     PlayerInputComponent->BindAxis("TurnRate", this, &AThirdPersonCharacter::TurnAtRate);
     PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
     PlayerInputComponent->BindAxis("LookUpRate", this, &AThirdPersonCharacter::LookUpAtRate);
-
-    // handle touch devices
-    PlayerInputComponent->BindTouch(IE_Pressed, this, &AThirdPersonCharacter::TouchStarted);
-    PlayerInputComponent->BindTouch(IE_Released, this, &AThirdPersonCharacter::TouchStopped);
-}
-
-void AThirdPersonCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
-{
-    Jump();
-}
-
-void AThirdPersonCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
-{
-    StopJumping();
 }
 
 void AThirdPersonCharacter::TurnAtRate(float Rate)
@@ -102,12 +107,77 @@ void AThirdPersonCharacter::LookUpAtRate(float Rate)
     AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-void AThirdPersonCharacter::ChangeStance()
+void AThirdPersonCharacter::ChangeStanceInputPressed()
 {
-    if (!bIsCrouched)
-        Crouch(false);
-    else
-        UnCrouch(false);
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Input Pressed!"));
+
+    bIsChangeStanceInputPressed = true;
+    //StanceBeforeInputPressed = CurrentStance;
+
+    //ChangeStancePressed();
+
+    GetWorldTimerManager().SetTimer(TimeSinceStancePressed, this, &AThirdPersonCharacter::ChangeStanceInputHold, DelayForStanceHold, false, DelayForStanceHold);
+}
+
+void AThirdPersonCharacter::ChangeStanceInputReleased()
+{
+    if (!bIsChangeStanceInputHolded)
+        ChangeStancePressed();
+
+    bIsChangeStanceInputPressed = false;
+    bIsChangeStanceInputHolded = false;
+    //StanceBeforeInputPressed = CurrentStance;
+
+    GetWorldTimerManager().ClearTimer(TimeSinceStancePressed);
+}
+
+void AThirdPersonCharacter::ChangeStancePressed()
+{
+    switch (CurrentStance)
+    {
+    case EPlayerStanceState::Stand:
+        ChangeStance(CurrentStance, EPlayerStanceState::Crouch);
+        break;
+    case EPlayerStanceState::Crouch:
+        ChangeStance(CurrentStance, EPlayerStanceState::Stand);
+        break;
+    case EPlayerStanceState::Prone:
+        ChangeStance(CurrentStance, EPlayerStanceState::Crouch);
+        break;
+    case EPlayerStanceState::Invalid:
+        break;
+    default:
+        break;
+    }
+}
+
+void AThirdPersonCharacter::ChangeStanceInputHold()
+{
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Input Hold!"));
+
+    if (!bIsChangeStanceInputPressed)
+        return;
+
+    switch (CurrentStance)
+    {
+    case EPlayerStanceState::Stand:
+        ChangeStance(CurrentStance, EPlayerStanceState::Prone);
+        break;
+    case EPlayerStanceState::Crouch:
+        ChangeStance(CurrentStance, EPlayerStanceState::Prone);
+        break;
+    case EPlayerStanceState::Prone:
+        ChangeStance(CurrentStance, EPlayerStanceState::Stand);
+        break;
+    
+    }
+
+    bIsChangeStanceInputHolded = true;
+}
+
+void AThirdPersonCharacter::ChangeStance(EPlayerStanceState OldStance, EPlayerStanceState NewStance)
+{
+    CurrentStance = NewStance;
 }
 
 void AThirdPersonCharacter::PickThrowableObject()
@@ -121,7 +191,7 @@ void AThirdPersonCharacter::PickThrowableObject()
             SpawnParams.Owner = this;
             SpawnParams.Instigator = Instigator;
 
-            FVector SpawnLocation = this->GetActorLocation() + FVector(100.f, 0.f, 0.f);
+            FVector SpawnLocation = this->GetActorLocation() + (100.f * this->GetActorForwardVector());
             FRotator SpawnRotation = this->GetActorRotation();
 
             SpawnedThrowableObject = CurrentWorld->SpawnActor<AActor>(EquipedThrowableObject, SpawnLocation, SpawnRotation, SpawnParams);
@@ -135,6 +205,8 @@ void AThirdPersonCharacter::ThrowObject()
 {
     if (SpawnedThrowableObject != nullptr)
     {
+        SpawnedThrowableObject->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
         TArray<UProjectileMovementComponent*> ProjectileComponentList;
         SpawnedThrowableObject->GetComponents<UProjectileMovementComponent>(ProjectileComponentList);
 
@@ -142,8 +214,6 @@ void AThirdPersonCharacter::ThrowObject()
         {
             ProjectileComponent->SetActive(true);
         }
-
-        SpawnedThrowableObject->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
         SpawnedThrowableObject = nullptr;
     }
@@ -176,4 +246,12 @@ void AThirdPersonCharacter::MoveRight(float Value)
         // add movement in that direction
         AddMovementInput(Direction, Value);
     }
+}
+
+void AThirdPersonCharacter::DrawDebug()
+{
+    if (!bEnableDebugDraw) 
+        return;
+
+    DrawDebugLine(GetWorld(), this->GetActorLocation(), this->GetActorLocation() + (100.f * this->GetActorForwardVector()), FColor::Red);
 }
