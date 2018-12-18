@@ -12,7 +12,7 @@ enum class EPlayerStanceState : uint8
     Stand,
     Crouch,
     Prone,
-    Invalid,
+    COUNT
 };
 
 UCLASS(config = Game)
@@ -60,16 +60,16 @@ protected:
     */
     void LookUpAtRate(float Rate);
 
-#pragma endregion
+    UFUNCTION(BlueprintCallable, Category = Camera)
+    float GetWantedArmLengthFromStance(EPlayerStanceState PlayerStance);
 
-#pragma region ElectricTool
+    UFUNCTION(BlueprintCallable, Category = Camera)
+    void UpdateWantedCameraArmLength();
 
-    /** Spawn the Throwable Object equiped by the Player **/
-    void PickThrowableObject();
+    UFUNCTION(BlueprintCallable, Category = Camera)
+    void RequestCameraArmLengthChange(float wantedArmLength , float transitionDuration);
 
-    /** Throw the Throwable Object spawned by the Player **/
-    void ThrowObject();
-
+    void TickCameraArmLength(float DeltaSeconds);
 #pragma endregion
 
 #pragma region PlayerStance
@@ -82,7 +82,33 @@ protected:
 
     void ChangeStanceInputHold();
 
+    UFUNCTION(BlueprintCallable, Category = PlayerStance)
     void ChangeStance(EPlayerStanceState OldStance, EPlayerStanceState NewStance);
+
+    UFUNCTION(BlueprintImplementableEvent, Category = PlayerStance)
+    void OnStanceChanged(EPlayerStanceState OldStance, EPlayerStanceState NewStance);
+#pragma endregion
+
+#pragma region Aiming
+
+protected:
+    void Aim();
+
+    void StopAim();
+
+    UFUNCTION(BlueprintImplementableEvent, Category = Aiming)
+    void OnAimChanged(bool isAiming);
+
+#pragma endregion
+
+#pragma region ElectricTool
+
+    /** Spawn the Throwable Object equiped by the Player **/
+    void PickThrowableObject();
+
+    /** Throw the Throwable Object spawned by the Player **/
+    void ThrowObject();
+
 #pragma endregion
 
 
@@ -100,13 +126,18 @@ private:
     *
     */
 
+public:
+    UFUNCTION(BlueprintPure, Category = PlayerStance)
+    FORCEINLINE EPlayerStanceState GetPlayerStance() const { return CurrentStance; }
+
+    UFUNCTION(BlueprintPure, Category = Aiming)
+    FORCEINLINE bool IsAiming() const { return bIsAiming; }
+
 protected:
     /** Returns CameraBoom subobject **/
     FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
     /** Returns FollowCamera subobject **/
     FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-
-
 
     /*
     *
@@ -135,27 +166,67 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
     class UCameraComponent* FollowCamera;
 
+    UPROPERTY(VisibleAnywhere, Category = Camera)
+    float WantedArmLength;
+
+    /*
+    *    -- STANCE CAMERA MODIFICATION --
+    */
+    UPROPERTY(EditAnywhere, Category = Camera)
+    float StanceArmLengthTransitionDuration;
+
+    UPROPERTY(EditAnywhere, Category = Camera)
+    float StandStanceArmLength;
+
+    UPROPERTY(EditAnywhere, Category = Camera)
+    float CrouchStanceArmLength;
+
+    UPROPERTY(EditAnywhere, Category = Camera)
+    float ProneStanceArmLength;
+
+    /*
+    *    -- AIM CAMERA MODIFICATION --
+    */
+    UPROPERTY(EditAnywhere, Category = Camera)
+    float AimingArmLengthTransitionDuration;
+
+    UPROPERTY(EditAnywhere, Category = Camera)
+    float AimingArmLength;
+
+private:
+    // The Arm Length speed (in m/s) needed in order to go from Current Arm Length to Wanted Arm Length in "ArmLengthTransitionDuration" seconds
+    UPROPERTY(VisibleAnywhere, Category = Camera)
+    float ArmLengthSpeed;
+
 #pragma endregion Member Variables for Camera Handling
 
 #pragma region PlayerStance
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = PlayerControl, meta = (AllowPrivateAccess = "true"))
-        EPlayerStanceState  CurrentStance;
+    UPROPERTY(VisibleAnywhere, Category = PlayerStance, meta = (AllowPrivateAccess = "true"))
+    EPlayerStanceState  CurrentStance;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = PlayerControl, meta = (AllowPrivateAccess = "true"))
-        bool                bIsChangeStanceInputPressed;
+    UPROPERTY(VisibleAnywhere, Category = PlayerStance, meta = (AllowPrivateAccess = "true"))
+    bool                bIsChangeStanceInputPressed;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = PlayerControl, meta = (AllowPrivateAccess = "true"))
-        bool                bIsChangeStanceInputHolded;
+    UPROPERTY(VisibleAnywhere, Category = PlayerStance, meta = (AllowPrivateAccess = "true"))
+    bool                bIsChangeStanceInputHolded;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = PlayerControl, meta = (AllowPrivateAccess = "true"))
-        FTimerHandle        TimeSinceStancePressed;
+    UPROPERTY(VisibleAnywhere, Category = PlayerStance, meta = (AllowPrivateAccess = "true"))
+    FTimerHandle        TimeSinceStancePressed;
 
     /* Delay (in seconds) need for the input the change the stance when holding the button */
-    UPROPERTY(EditAnywhere, Category = PlayerControl)
-        float               DelayForStanceHold;
+    UPROPERTY(EditAnywhere, Category = PlayerStance)
+    float               DelayForStanceHold;
 
 #pragma endregion Member Variables to handle the Player Stances (Stand/Crouch/Prone)
+
+#pragma region Aiming
+
+protected:
+    UPROPERTY(VisibleAnywhere, Category = Aiming, meta = (AllowPrivateAccess = "true"))
+    bool bIsAiming;
+
+#pragma endregion
 
 #pragma region ElectricTool
 

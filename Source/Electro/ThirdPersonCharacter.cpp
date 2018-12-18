@@ -58,10 +58,25 @@ AThirdPersonCharacter::AThirdPersonCharacter()
     // are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
 
+    // CAMERA
+    WantedArmLength = CameraBoom->TargetArmLength;
+    
+    StanceArmLengthTransitionDuration = 0.25f;
+    StandStanceArmLength = 300.f;
+    CrouchStanceArmLength = 250.f;
+    ProneStanceArmLength = 200.f;
+
+    AimingArmLengthTransitionDuration = 0.1f;
+    AimingArmLength = 180.f;
+
     // STANCE INIT
-    bIsChangeStanceInputPressed = false;
     CurrentStance = EPlayerStanceState::Stand;
+    bIsChangeStanceInputPressed = false;
+    bIsChangeStanceInputHolded = false;
     DelayForStanceHold = 0.2f;
+
+    // AIMING
+    bIsAiming = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -69,6 +84,8 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 
 void AThirdPersonCharacter::Tick(float DeltaSeconds)
 {
+    TickCameraArmLength(DeltaSeconds);
+
     DrawDebug();
 }
 
@@ -77,15 +94,11 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
     // Set up gameplay key bindings
     check(PlayerInputComponent);
 
-    PlayerInputComponent->BindAction("ChangeStance", IE_Pressed, this, &AThirdPersonCharacter::ChangeStanceInputPressed);
-    PlayerInputComponent->BindAction("ChangeStance", IE_Released, this, &AThirdPersonCharacter::ChangeStanceInputReleased);
-
-    PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AThirdPersonCharacter::PickThrowableObject);
-    PlayerInputComponent->BindAction("Throw", IE_Released, this, &AThirdPersonCharacter::ThrowObject);
-
+    // MOVEMENT
     PlayerInputComponent->BindAxis("MoveForward", this, &AThirdPersonCharacter::MoveForward);
     PlayerInputComponent->BindAxis("MoveRight", this, &AThirdPersonCharacter::MoveRight);
 
+    // CAMERA
     // We have 2 versions of the rotation bindings to handle different kinds of devices differently
     // "turn" handles devices that provide an absolute delta, such as a mouse.
     // "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
@@ -93,8 +106,62 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
     PlayerInputComponent->BindAxis("TurnRate", this, &AThirdPersonCharacter::TurnAtRate);
     PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
     PlayerInputComponent->BindAxis("LookUpRate", this, &AThirdPersonCharacter::LookUpAtRate);
+
+    // STANCE
+    PlayerInputComponent->BindAction("ChangeStance", IE_Pressed, this, &AThirdPersonCharacter::ChangeStanceInputPressed);
+    PlayerInputComponent->BindAction("ChangeStance", IE_Released, this, &AThirdPersonCharacter::ChangeStanceInputReleased);
+
+    // AIMING
+    PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AThirdPersonCharacter::Aim);
+    PlayerInputComponent->BindAction("Aim", IE_Released, this, &AThirdPersonCharacter::StopAim);
+
+    // ELECTRIC TOOL
+    PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AThirdPersonCharacter::PickThrowableObject);
+    PlayerInputComponent->BindAction("Throw", IE_Released, this, &AThirdPersonCharacter::ThrowObject);
+
+    
 }
 
+
+/*
+*
+*    --- MOVEMENT ---
+*
+*/
+void AThirdPersonCharacter::MoveForward(float Value)
+{
+    if ((Controller != NULL) && (Value != 0.0f))
+    {
+        // find out which way is forward
+        const FRotator Rotation = Controller->GetControlRotation();
+        const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+        // get forward vector
+        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+        AddMovementInput(Direction, Value);
+    }
+}
+
+void AThirdPersonCharacter::MoveRight(float Value)
+{
+    if ((Controller != NULL) && (Value != 0.0f))
+    {
+        // find out which way is right
+        const FRotator Rotation = Controller->GetControlRotation();
+        const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+        // get right vector 
+        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+        // add movement in that direction
+        AddMovementInput(Direction, Value);
+    }
+}
+
+/*
+*
+*    --- CAMERA ---
+*
+*/
 void AThirdPersonCharacter::TurnAtRate(float Rate)
 {
     // calculate delta for this frame from the rate information
@@ -107,14 +174,78 @@ void AThirdPersonCharacter::LookUpAtRate(float Rate)
     AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
+float AThirdPersonCharacter::GetWantedArmLengthFromStance(EPlayerStanceState PlayerStance)
+{
+    switch (CurrentStance)
+    {
+    case EPlayerStanceState::Stand:
+        return StandStanceArmLength;
+        break;
+    case EPlayerStanceState::Crouch:
+        return CrouchStanceArmLength;
+        break;
+    case EPlayerStanceState::Prone:
+        return ProneStanceArmLength;
+        break;
+    }
+
+    // INVALID PATH
+    ensureMsgf(false, TEXT("Invalid Player Stance passed into parameters"));
+    return 0.f;
+}
+
+void AThirdPersonCharacter::UpdateWantedCameraArmLength()
+{
+    float transitionDuration = 0.f;
+    float wantedArmLength = 0.f;
+    
+    if (IsAiming())
+    {
+        wantedArmLength = AimingArmLength;
+        transitionDuration = AimingArmLengthTransitionDuration;
+    }
+    else
+    {
+        wantedArmLength = GetWantedArmLengthFromStance(CurrentStance);
+        transitionDuration = StanceArmLengthTransitionDuration;
+    }
+        
+    RequestCameraArmLengthChange(wantedArmLength, transitionDuration);
+}
+
+void AThirdPersonCharacter::RequestCameraArmLengthChange(float wantedArmLength, float transitionDuration)
+{
+    this->WantedArmLength = wantedArmLength;
+
+    // Diff between current Arm Length and the wanted new one
+    float ArmLengthDiff = WantedArmLength - CameraBoom->TargetArmLength;
+
+    // The Arm Length speed (in m/s) needed in order to go from Current Arm Length to Wanted Arm Length in "ArmLengthTransitionDuration" seconds
+    ArmLengthSpeed = ArmLengthDiff / transitionDuration;
+}
+
+void AThirdPersonCharacter::TickCameraArmLength(float DeltaSeconds)
+{
+    if (CameraBoom != nullptr)
+    {
+        float ArmLengthToAdd = ArmLengthSpeed * DeltaSeconds;
+        if (!FMath::IsNearlyEqual(CameraBoom->TargetArmLength, WantedArmLength, FMath::Abs(ArmLengthToAdd) - 0.01f))
+        {
+            CameraBoom->TargetArmLength += ArmLengthToAdd;
+        }
+    }
+}
+
+/*
+*
+*    --- PLAYER STANCES ---
+*
+*/
 void AThirdPersonCharacter::ChangeStanceInputPressed()
 {
     GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Input Pressed!"));
 
     bIsChangeStanceInputPressed = true;
-    //StanceBeforeInputPressed = CurrentStance;
-
-    //ChangeStancePressed();
 
     GetWorldTimerManager().SetTimer(TimeSinceStancePressed, this, &AThirdPersonCharacter::ChangeStanceInputHold, DelayForStanceHold, false, DelayForStanceHold);
 }
@@ -144,7 +275,7 @@ void AThirdPersonCharacter::ChangeStancePressed()
     case EPlayerStanceState::Prone:
         ChangeStance(CurrentStance, EPlayerStanceState::Crouch);
         break;
-    case EPlayerStanceState::Invalid:
+    case EPlayerStanceState::COUNT:
         break;
     default:
         break;
@@ -178,8 +309,32 @@ void AThirdPersonCharacter::ChangeStanceInputHold()
 void AThirdPersonCharacter::ChangeStance(EPlayerStanceState OldStance, EPlayerStanceState NewStance)
 {
     CurrentStance = NewStance;
+    OnStanceChanged(OldStance, NewStance);
 }
 
+
+/*
+*
+*    --- AIMING ---
+*
+*/
+void AThirdPersonCharacter::Aim()
+{
+    bIsAiming = true;
+    OnAimChanged(bIsAiming);
+}
+
+void AThirdPersonCharacter::StopAim()
+{
+    bIsAiming = false;
+    OnAimChanged(bIsAiming);
+}
+
+/*
+*
+*    --- ELECTRIC TOOLS ---
+*
+*/
 void AThirdPersonCharacter::PickThrowableObject()
 {
     if (EquipedThrowableObject != NULL)
@@ -219,35 +374,12 @@ void AThirdPersonCharacter::ThrowObject()
     }
 }
 
-void AThirdPersonCharacter::MoveForward(float Value)
-{
-    if ((Controller != NULL) && (Value != 0.0f))
-    {
-        // find out which way is forward
-        const FRotator Rotation = Controller->GetControlRotation();
-        const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-        // get forward vector
-        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-        AddMovementInput(Direction, Value);
-    }
-}
-
-void AThirdPersonCharacter::MoveRight(float Value)
-{
-    if ((Controller != NULL) && (Value != 0.0f))
-    {
-        // find out which way is right
-        const FRotator Rotation = Controller->GetControlRotation();
-        const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-        // get right vector 
-        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-        // add movement in that direction
-        AddMovementInput(Direction, Value);
-    }
-}
-
+/*
+*
+*    --- DEBUG ---
+*
+*/
 void AThirdPersonCharacter::DrawDebug()
 {
     if (!bEnableDebugDraw) 
