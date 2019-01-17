@@ -5,16 +5,12 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Runtime/AIModule/Classes/GenericTeamAgentInterface.h"
+
+#include "StanceComponent.h"
+#include "FurtivityComponent.h"
+
 #include "ThirdPersonCharacter.generated.h"
 
-UENUM(BlueprintType)
-enum class EPlayerStanceState : uint8
-{
-    Stand,
-    Crouch,
-    Prone,
-    COUNT
-};
 
 UCLASS(config = Game)
 class ELECTRO_API AThirdPersonCharacter : public ACharacter, public IGenericTeamAgentInterface
@@ -72,7 +68,7 @@ protected:
     void LookUpAtRate(float Rate);
 
     UFUNCTION(BlueprintCallable, Category = Camera)
-    float GetWantedArmLengthFromStance(EPlayerStanceState PlayerStance);
+    float GetWantedArmLengthFromStance(ECharacterStanceState CurrentStance);
 
     UFUNCTION(BlueprintCallable, Category = Camera)
     void UpdateWantedCameraArmLength();
@@ -81,6 +77,7 @@ protected:
     void RequestCameraArmLengthChange(float wantedArmLength , float transitionDuration);
 
     void TickCameraArmLength(float DeltaSeconds);
+
 #pragma endregion
 
 #pragma region PlayerStance
@@ -93,11 +90,6 @@ protected:
 
     void ChangeStanceInputHold();
 
-    UFUNCTION(BlueprintCallable, Category = PlayerStance)
-    void ChangeStance(EPlayerStanceState NewStance);
-
-    UFUNCTION(BlueprintImplementableEvent, Category = PlayerStance)
-    void OnStanceChanged(EPlayerStanceState OldStance, EPlayerStanceState NewStance);
 #pragma endregion
 
 #pragma region Aiming
@@ -138,8 +130,9 @@ private:
     */
 
 public:
-    UFUNCTION(BlueprintPure, Category = PlayerStance)
-    FORCEINLINE EPlayerStanceState GetPlayerStance() const { return CurrentStance; }
+
+    UFUNCTION(BlueprintPure, Category = CharacterStance)
+    FORCEINLINE ECharacterStanceState GetCharacterStance() const { return StanceComponent->GetCharacterStance(); }
 
     UFUNCTION(BlueprintPure, Category = Aiming)
     FORCEINLINE bool IsAiming() const { return bIsAiming; }
@@ -214,8 +207,9 @@ private:
 #pragma region PlayerStance
 
 protected:
+    
     UPROPERTY(VisibleAnywhere, Category = PlayerStance, meta = (AllowPrivateAccess = "true"))
-    EPlayerStanceState  CurrentStance;
+    UStanceComponent* StanceComponent;
 
     UPROPERTY(VisibleAnywhere, Category = PlayerStance, meta = (AllowPrivateAccess = "true"))
     bool                bIsChangeStanceInputPressed;
@@ -249,12 +243,22 @@ protected:
 
 #pragma endregion Member Variables for Electric Component the player can use
 
+#pragma region Furtivity
+
+protected:
+
+    UPROPERTY(VisibleAnywhere, Category = Furtivity, meta = (AllowPrivateAccess = "true"))
+    UFurtivityComponent* FurtivityComponent;
+
+#pragma endregion
+
 
 #pragma region Debug
 
 private:
     UPROPERTY(EditAnywhere, Category = "Debug")
     bool                bEnableDebugDraw;
-};
 
 #pragma endregion
+
+};

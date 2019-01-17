@@ -70,10 +70,13 @@ AThirdPersonCharacter::AThirdPersonCharacter()
     AimingArmLength = 180.f;
 
     // STANCE INIT
-    CurrentStance = EPlayerStanceState::Stand;
+    StanceComponent = CreateDefaultSubobject<UStanceComponent>(TEXT("StanceComponent"));
     bIsChangeStanceInputPressed = false;
     bIsChangeStanceInputHolded = false;
     DelayForStanceHold = 0.2f;
+
+    // FURTIVITY
+    FurtivityComponent = CreateDefaultSubobject<UFurtivityComponent>(TEXT("FurtivityComponent"));
 
     // AIMING
     bIsAiming = false;
@@ -180,17 +183,17 @@ void AThirdPersonCharacter::LookUpAtRate(float Rate)
     AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-float AThirdPersonCharacter::GetWantedArmLengthFromStance(EPlayerStanceState PlayerStance)
+float AThirdPersonCharacter::GetWantedArmLengthFromStance(ECharacterStanceState CurrentStance)
 {
     switch (CurrentStance)
     {
-    case EPlayerStanceState::Stand:
+    case ECharacterStanceState::Stand:
         return StandStanceArmLength;
         break;
-    case EPlayerStanceState::Crouch:
+    case ECharacterStanceState::Crouch:
         return CrouchStanceArmLength;
         break;
-    case EPlayerStanceState::Prone:
+    case ECharacterStanceState::Prone:
         return ProneStanceArmLength;
         break;
     }
@@ -212,7 +215,7 @@ void AThirdPersonCharacter::UpdateWantedCameraArmLength()
     }
     else
     {
-        wantedArmLength = GetWantedArmLengthFromStance(CurrentStance);
+        wantedArmLength = GetWantedArmLengthFromStance(StanceComponent->GetCharacterStance());
         transitionDuration = StanceArmLengthTransitionDuration;
     }
         
@@ -270,18 +273,20 @@ void AThirdPersonCharacter::ChangeStanceInputReleased()
 
 void AThirdPersonCharacter::ChangeStancePressed()
 {
+    ECharacterStanceState CurrentStance = StanceComponent->GetCharacterStance();
+
     switch (CurrentStance)
     {
-    case EPlayerStanceState::Stand:
-        ChangeStance(EPlayerStanceState::Crouch);
+    case ECharacterStanceState::Stand:
+        StanceComponent->ChangeStance(ECharacterStanceState::Crouch);
         break;
-    case EPlayerStanceState::Crouch:
-        ChangeStance(EPlayerStanceState::Stand);
+    case ECharacterStanceState::Crouch:
+        StanceComponent->ChangeStance(ECharacterStanceState::Stand);
         break;
-    case EPlayerStanceState::Prone:
-        ChangeStance(EPlayerStanceState::Crouch);
+    case ECharacterStanceState::Prone:
+        StanceComponent->ChangeStance(ECharacterStanceState::Crouch);
         break;
-    case EPlayerStanceState::COUNT:
+    case ECharacterStanceState::COUNT:
         break;
     default:
         break;
@@ -295,28 +300,22 @@ void AThirdPersonCharacter::ChangeStanceInputHold()
     if (!bIsChangeStanceInputPressed)
         return;
 
+    ECharacterStanceState CurrentStance = StanceComponent->GetCharacterStance();
+
     switch (CurrentStance)
     {
-    case EPlayerStanceState::Stand:
-        ChangeStance(EPlayerStanceState::Prone);
+    case ECharacterStanceState::Stand:
+        StanceComponent->ChangeStance(ECharacterStanceState::Prone);
         break;
-    case EPlayerStanceState::Crouch:
-        ChangeStance(EPlayerStanceState::Prone);
+    case ECharacterStanceState::Crouch:
+        StanceComponent->ChangeStance(ECharacterStanceState::Prone);
         break;
-    case EPlayerStanceState::Prone:
-        ChangeStance(EPlayerStanceState::Stand);
+    case ECharacterStanceState::Prone:
+        StanceComponent->ChangeStance(ECharacterStanceState::Stand);
         break;
-    
     }
 
     bIsChangeStanceInputHolded = true;
-}
-
-void AThirdPersonCharacter::ChangeStance(EPlayerStanceState NewStance)
-{
-    EPlayerStanceState OldStance = CurrentStance;
-    CurrentStance = NewStance;
-    OnStanceChanged(OldStance, NewStance);
 }
 
 
