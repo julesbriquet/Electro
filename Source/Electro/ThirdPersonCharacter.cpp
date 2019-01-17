@@ -122,6 +122,12 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
     
 }
 
+FGenericTeamId AThirdPersonCharacter::GetGenericTeamId() const
+{
+    // TODO: This is temp: 0 is player, 1 is enemy, might need a proper "Faction" enum definition later
+    return 0;
+}
+
 
 /*
 *
@@ -267,13 +273,13 @@ void AThirdPersonCharacter::ChangeStancePressed()
     switch (CurrentStance)
     {
     case EPlayerStanceState::Stand:
-        ChangeStance(CurrentStance, EPlayerStanceState::Crouch);
+        ChangeStance(EPlayerStanceState::Crouch);
         break;
     case EPlayerStanceState::Crouch:
-        ChangeStance(CurrentStance, EPlayerStanceState::Stand);
+        ChangeStance(EPlayerStanceState::Stand);
         break;
     case EPlayerStanceState::Prone:
-        ChangeStance(CurrentStance, EPlayerStanceState::Crouch);
+        ChangeStance(EPlayerStanceState::Crouch);
         break;
     case EPlayerStanceState::COUNT:
         break;
@@ -292,13 +298,13 @@ void AThirdPersonCharacter::ChangeStanceInputHold()
     switch (CurrentStance)
     {
     case EPlayerStanceState::Stand:
-        ChangeStance(CurrentStance, EPlayerStanceState::Prone);
+        ChangeStance(EPlayerStanceState::Prone);
         break;
     case EPlayerStanceState::Crouch:
-        ChangeStance(CurrentStance, EPlayerStanceState::Prone);
+        ChangeStance(EPlayerStanceState::Prone);
         break;
     case EPlayerStanceState::Prone:
-        ChangeStance(CurrentStance, EPlayerStanceState::Stand);
+        ChangeStance(EPlayerStanceState::Stand);
         break;
     
     }
@@ -306,8 +312,9 @@ void AThirdPersonCharacter::ChangeStanceInputHold()
     bIsChangeStanceInputHolded = true;
 }
 
-void AThirdPersonCharacter::ChangeStance(EPlayerStanceState OldStance, EPlayerStanceState NewStance)
+void AThirdPersonCharacter::ChangeStance(EPlayerStanceState NewStance)
 {
+    EPlayerStanceState OldStance = CurrentStance;
     CurrentStance = NewStance;
     OnStanceChanged(OldStance, NewStance);
 }

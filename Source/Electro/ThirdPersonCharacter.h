@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Runtime/AIModule/Classes/GenericTeamAgentInterface.h"
 #include "ThirdPersonCharacter.generated.h"
 
 UENUM(BlueprintType)
@@ -16,7 +17,7 @@ enum class EPlayerStanceState : uint8
 };
 
 UCLASS(config = Game)
-class ELECTRO_API AThirdPersonCharacter : public ACharacter
+class ELECTRO_API AThirdPersonCharacter : public ACharacter, public IGenericTeamAgentInterface
 {
     GENERATED_BODY()
 
@@ -29,12 +30,22 @@ public:
     *
     */
 
+#pragma region PawnInterface
+    
 protected:
     virtual void Tick(float DeltaSeconds) override;
 
-    // APawn interface
+    
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-    // End of APawn interface
+
+#pragma endregion
+
+#pragma region GenericTeamAgentInterface
+
+protected:
+    virtual FGenericTeamId GetGenericTeamId() const override;
+
+#pragma endregion
 
 #pragma region Movement
 
@@ -83,7 +94,7 @@ protected:
     void ChangeStanceInputHold();
 
     UFUNCTION(BlueprintCallable, Category = PlayerStance)
-    void ChangeStance(EPlayerStanceState OldStance, EPlayerStanceState NewStance);
+    void ChangeStance(EPlayerStanceState NewStance);
 
     UFUNCTION(BlueprintImplementableEvent, Category = PlayerStance)
     void OnStanceChanged(EPlayerStanceState OldStance, EPlayerStanceState NewStance);
@@ -202,6 +213,7 @@ private:
 
 #pragma region PlayerStance
 
+protected:
     UPROPERTY(VisibleAnywhere, Category = PlayerStance, meta = (AllowPrivateAccess = "true"))
     EPlayerStanceState  CurrentStance;
 
