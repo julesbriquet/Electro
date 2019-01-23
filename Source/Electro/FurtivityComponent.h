@@ -7,7 +7,7 @@
 
 #include "GameFramework/MovementComponent.h"
 #include "StanceComponent.h"
-
+#include "AI_Enum.h"
 #include "FurtivityComponent.generated.h"
 
 
@@ -43,7 +43,7 @@ public:
 
 
 public:
-    float GetFurtivityScore() const;
+    float GetFurtivityScore(ESightType SightType) const;
 
 		
     /*
@@ -61,12 +61,10 @@ protected:
 protected:
 
     UPROPERTY(EditAnywhere, Category = Furtivity)
-    FFurtivityScoreData FurtivityScoreArray[ECharacterStanceState::COUNT];
-    
-    UPROPERTY(EditAnywhere, Category = Furtivity)
-    float RunningFurtivityScore;
+    FFurtivityScoreData SeenFurtivityScoreArray[ECharacterStanceState::COUNT];
 
     UPROPERTY(EditAnywhere, Category = Furtivity)
-    float SprintingFurtivityScore;
+    FFurtivityScoreData SpottedFurtivityScoreArray[ECharacterStanceState::COUNT];
+    
 	
 };

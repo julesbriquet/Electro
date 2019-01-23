@@ -39,7 +39,7 @@ void UFurtivityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	// ...
 }
 
-float UFurtivityComponent::GetFurtivityScore() const
+float UFurtivityComponent::GetFurtivityScore(ESightType SightType) const
 {
     if (MovementComponent == nullptr || StanceComponent == nullptr)
         return 0.0f;
@@ -50,7 +50,12 @@ float UFurtivityComponent::GetFurtivityScore() const
     ECharacterStanceState CurrentStance = StanceComponent->GetCharacterStance();
     bool isOwnerMoving = MovementComponent->Velocity.Size() > 0.f;
 
-    FFurtivityScoreData FurtivityScoreStance = FurtivityScoreArray[(int)CurrentStance];
+    FFurtivityScoreData FurtivityScoreStance;
+    
+    if (SightType == ESightType::Seen)
+        FurtivityScoreStance = SeenFurtivityScoreArray[(int)CurrentStance];
+    else if (SightType == ESightType::Spotted)
+        FurtivityScoreStance = SpottedFurtivityScoreArray[(int)CurrentStance];
 
     if (isOwnerMoving)
         FurtivityScore = FurtivityScoreStance.MovingScore;

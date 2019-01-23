@@ -32,7 +32,7 @@ void USoldierFeedbackComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	// ...
 }
 
-void USoldierFeedbackComponent::OnEnemySpottedFeedback(const APawn* EnemySpotted)
+void USoldierFeedbackComponent::OnEnemySightFeedback(const APawn* EnemySpotted, ESightType SightType)
 {
-    SoldierFeedbackComponent_OnEnemySpottedFeedback.Broadcast(EnemySpotted);
+    SoldierFeedbackComponent_OnEnemySightFeedback.Broadcast(EnemySpotted, SightType);
 }

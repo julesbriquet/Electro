@@ -5,10 +5,11 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Pawn.h"
+#include "AI_Enum.h"
 #include "SoldierFeedbackComponent.generated.h"
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoldierFeedbackSpottedEnemy, const APawn*, SpottedEnemy);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FSoldierFeedbackEnemySight, const APawn*, SightedEnemy, ESightType, SightType);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class ELECTRO_API USoldierFeedbackComponent : public UActorComponent
@@ -27,13 +28,12 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
-
 public:
-    void OnEnemySpottedFeedback(const APawn* EnemySpotted);
+    void OnEnemySightFeedback(const APawn* EnemySpotted, ESightType SightType);
 
 protected:
     UPROPERTY(BlueprintAssignable, Category = AI)
-    FSoldierFeedbackSpottedEnemy SoldierFeedbackComponent_OnEnemySpottedFeedback;
+    FSoldierFeedbackEnemySight SoldierFeedbackComponent_OnEnemySightFeedback;
 	
+
 };

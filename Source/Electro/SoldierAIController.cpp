@@ -31,15 +31,36 @@ void ASoldierAIController::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    for (int i = 0; i < EnemiesInSightList.Num();)
+    for (int i = 0; i < PendingSightEnemiesList.Num();)
     {
-        APawn* EnemyInSight = EnemiesInSightList[i];
+        APawn* PendingEnemyInSight = PendingSightEnemiesList[i];
 
-        if (CanBeSpotted(EnemyInSight))
-            AddSightedEnemyInSpottedList(i);
-        else
-            i++;
+        if (CanSpotPawn(PendingEnemyInSight))
+        {
+            if (TransferPawn(PendingSightEnemiesList, SpottedEnemiesList, i))
+                OnEnemySpotted(PendingEnemyInSight);
+        }
+        else if (CanSeePawn(PendingEnemyInSight))
+        {
+            if (TransferPawn(PendingSightEnemiesList, SeenEnemiesList, i))
+                OnEnemySeen(PendingEnemyInSight);
+        }
+            
+        else i++;
     }
+
+    for (int i = 0; i < SeenEnemiesList.Num();)
+    {
+        APawn* SeenEnemy = SeenEnemiesList[i];
+
+        if (CanSpotPawn(SeenEnemy))
+        {
+            if (TransferPawn(SeenEnemiesList, SpottedEnemiesList, i))
+                OnEnemySpotted(SeenEnemy);
+        }
+        else i++;
+    }
+
 }
 
 void ASoldierAIController::PostRegisterAllComponents()
@@ -70,11 +91,14 @@ void ASoldierAIController::OnPerceptionUpdated(const TArray<AActor *>& UpdatedAc
                     if (PerceivedPawn != nullptr)
                     {
                         if (PerceivedActorStimulis.WasSuccessfullySensed() && !PerceivedActorStimulis.IsExpired())
-                            AddEnemyInSightList(PerceivedPawn);
+                            PendingSightEnemiesList.AddUnique(PerceivedPawn);
                         else
                         {
-                            if (!RemoveEnemyInSightList(PerceivedPawn))
-                                RemoveEnemyInSpottedList(PerceivedPawn);
+                            if (!RemoveEnemyFromList(PendingSightEnemiesList, PerceivedPawn))
+                            {
+                                if (!RemoveEnemyFromList(SeenEnemiesList, PerceivedPawn))
+                                    RemoveEnemyFromList(SpottedEnemiesList, PerceivedPawn);
+                            }
                         }
                             
                     }
@@ -85,57 +109,63 @@ void ASoldierAIController::OnPerceptionUpdated(const TArray<AActor *>& UpdatedAc
 }
 
 
-bool ASoldierAIController::AddEnemyInSightList(APawn* EnemyToAdd)
+bool ASoldierAIController::RemoveEnemyFromList(TArray<APawn*>& RemovedFromList, APawn* EnemyToRemove)
 {
-    int addIndex = EnemiesInSightList.AddUnique(EnemyToAdd);    
-    return addIndex != -1;
-}
-
-bool ASoldierAIController::RemoveEnemyInSightList(APawn* EnemyToRemove)
-{
-    int removedNumber = EnemiesInSightList.RemoveSingleSwap(EnemyToRemove);
+    int removedNumber = RemovedFromList.RemoveSingleSwap(EnemyToRemove);
 
     return removedNumber > 0;
 }
 
-bool ASoldierAIController::AddSightedEnemyInSpottedList(int SightedEnemyIndex)
+bool ASoldierAIController::TransferPawn(TArray<APawn*>& RemovedFromList, TArray<APawn*>& AddedToList, int RemovedPawnIndex)
 {
-    if (SightedEnemyIndex >= EnemiesInSightList.Num())
+    if (RemovedPawnIndex >= RemovedFromList.Num())
         return false;
 
-    int enemyIndex = EnemiesSpottedList.Add(EnemiesInSightList[SightedEnemyIndex]);
-    EnemiesInSightList.RemoveAtSwap(SightedEnemyIndex);
-
-    OnEnemySpotted(EnemiesSpottedList[enemyIndex]);
+    int pawnIndex = AddedToList.Add(RemovedFromList[RemovedPawnIndex]);
+    RemovedFromList.RemoveAtSwap(RemovedPawnIndex);
 
     return true;
 }
 
-bool ASoldierAIController::RemoveEnemyInSpottedList(APawn* EnemyToRemove)
-{
-    int removedNumber = EnemiesSpottedList.RemoveSingleSwap(EnemyToRemove);
 
-    return removedNumber > 0;
-}
-
-bool ASoldierAIController::CanBeSpotted(APawn* Enemy)
+bool ASoldierAIController::CanSightPawn(APawn* Pawn, ESightType SightType)
 {
-    UFurtivityComponent* EnemyFurtivityComponent = Enemy->FindComponentByClass<UFurtivityComponent>();
+    UFurtivityComponent* EnemyFurtivityComponent = Pawn->FindComponentByClass<UFurtivityComponent>();
+
     if (EnemyFurtivityComponent != nullptr)
     {
         FVector SoldierLocation = this->GetPawn()->GetActorLocation();
-        FVector EnemyLocation = Enemy->GetActorLocation();
+        FVector EnemyLocation = Pawn->GetActorLocation();
 
         float DistanceToEnemy = FVector::Distance(SoldierLocation, EnemyLocation);
-        float FurtivityScoreInMeters = EnemyFurtivityComponent->GetFurtivityScore() * 100;
+        float FurtivityScoreInMeters = EnemyFurtivityComponent->GetFurtivityScore(SightType) * 100;
 
         GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Distance: %f, FurtivityScore: %f"), DistanceToEnemy, FurtivityScoreInMeters));
 
         return DistanceToEnemy <= this->SightConfig->SightRadius - FurtivityScoreInMeters;
     }
 
-    // TODO
     return true;
+}
+
+bool ASoldierAIController::CanSeePawn(APawn* Pawn)
+{
+    return CanSightPawn(Pawn, ESightType::Seen);
+}
+
+
+bool ASoldierAIController::CanSpotPawn(APawn* Pawn)
+{
+    return CanSightPawn(Pawn, ESightType::Spotted);
+}
+
+void ASoldierAIController::OnEnemySeen(APawn* EnemySeen)
+{
+    if (SoldierStateComponent != nullptr)
+        SoldierStateComponent->ChangeState(ESoldierState::Suspicious);
+
+    if (SoldierFeedbackComponent != nullptr)
+        SoldierFeedbackComponent->OnEnemySightFeedback(EnemySeen, ESightType::Seen);
 }
 
 void ASoldierAIController::OnEnemySpotted(APawn* EnemySpotted)
@@ -146,7 +176,7 @@ void ASoldierAIController::OnEnemySpotted(APawn* EnemySpotted)
     }
 
     if (SoldierFeedbackComponent != nullptr)
-        SoldierFeedbackComponent->OnEnemySpottedFeedback(EnemySpotted);
+        SoldierFeedbackComponent->OnEnemySightFeedback(EnemySpotted, ESightType::Spotted);
 }
 
 FGenericTeamId ASoldierAIController::GetGenericTeamId() const

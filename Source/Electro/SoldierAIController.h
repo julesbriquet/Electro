@@ -14,6 +14,7 @@
 /**
  * 
  */
+
 UCLASS()
 class ELECTRO_API ASoldierAIController : public AAIController
 {
@@ -21,6 +22,8 @@ class ELECTRO_API ASoldierAIController : public AAIController
 	
 public:
     ASoldierAIController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+    typedef void (ASoldierAIController::*TransferCallbackMethod)(APawn* Pawn);
 
     /*
     *
@@ -45,14 +48,17 @@ protected:
 #pragma region Perception_Sight
 
 protected:
-    bool AddEnemyInSightList(APawn* EnemyToAdd);
-    bool RemoveEnemyInSightList(APawn* EnemyToRemove);
+    bool RemoveEnemyFromList(TArray<APawn*>& RemovedFromList, APawn* EnemyToRemove);
 
-    bool AddSightedEnemyInSpottedList(int SightedEnemyIndex);
-    bool RemoveEnemyInSpottedList(APawn* EnemyToRemove);
-
-    bool CanBeSpotted(APawn* Enemy);
+    bool TransferPawn(TArray<APawn*>& RemovedFromList, TArray<APawn*>& AddedToList, int RemovedPawnIndex);
     
+
+    bool CanSightPawn(APawn* Pawn, ESightType SightType);
+    bool CanSeePawn(APawn* Pawn);
+    bool CanSpotPawn(APawn* Pawn);
+    
+    
+    void OnEnemySeen(APawn* EnemySeen);
     void OnEnemySpotted(APawn* EnemySpotted);
 
 #pragma endregion
@@ -77,8 +83,11 @@ protected:
     USoldierFeedbackComponent* SoldierFeedbackComponent;
     
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = AI)
-    TArray<APawn*> EnemiesInSightList;
+    TArray<APawn*> PendingSightEnemiesList;
 
     UPROPERTY(VisibleAnywhere, Category = AI)
-    TArray<APawn*> EnemiesSpottedList;
+    TArray<APawn*> SeenEnemiesList;
+
+    UPROPERTY(VisibleAnywhere, Category = AI)
+    TArray<APawn*> SpottedEnemiesList;
 };
