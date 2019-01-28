@@ -4,19 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+
+#include "AI_Enum.h"
+
 #include "SoldierStateComponent.generated.h"
-
-UENUM(BlueprintType)
-enum class ESoldierState : uint8
-{
-    Idle,
-    Suspicious,
-    Vigilant,
-    Alert,
-    Fight,
-    COUNT
-};
-
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class ELECTRO_API USoldierStateComponent : public UActorComponent
@@ -44,8 +35,6 @@ public:
 
 #pragma region SoldierState
 
-#pragma endregion
-
 public:
     UFUNCTION(BlueprintCallable, Category = PlayerStance)
     void ChangeState(ESoldierState NewState);
@@ -55,6 +44,9 @@ protected:
     void OnStateChanged(ESoldierState OldState, ESoldierState NewState);
 
 #pragma endregion
+
+public:
+    FString GetDebugInfoString() const;
 
     /*
     *

@@ -41,3 +41,12 @@ void USoldierStateComponent::ChangeState(ESoldierState NewState)
 
     OnStateChanged(OldState, NewState);
 }
+
+FString USoldierStateComponent::GetDebugInfoString() const
+{
+    FString CurrentSoldierStateName = EnumToString<ESoldierState>("ESoldierState", CurrentSoldierState);
+
+    FString FORMAT_STRING = TEXT("{white}Soldier State: {yellow}" + CurrentSoldierStateName + "\n");
+
+    return FORMAT_STRING;
+}
